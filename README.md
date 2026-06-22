@@ -234,17 +234,114 @@ Atau gunakan halaman **Daftar Akun** untuk membuat persona kamu sendiri (data te
 
 ---
 
+## 🧪 Unit Testing & Widget Testing (AFL 3)
+
+Project ini dilengkapi dengan **176 test cases** yang mencakup unit testing untuk model, repository, viewmodel, serta widget testing untuk komponen UI utama. Semua test mengikuti **pola Arrange-Act-Assert (AAA)** dengan komentar eksplisit di setiap test case.
+
+### Struktur Folder Test
+
+```
+test/
+├── widget_test.dart                              ← smoke test (1)
+├── models/                                       ← MODEL UNIT TESTS (29 tests)
+│   ├── milestone_test.dart                       ← Milestone (12 tests)
+│   ├── mood_log_test.dart                        ← MoodLog (16 tests)
+│   ├── reference_item_test.dart                  ← ReferenceItem (8 tests)
+│   └── user_profile_test.dart                    ← UserProfile (8 tests)
+├── repositories/                                 ← REPOSITORY UNIT TESTS (66 tests)
+│   ├── milestone_repository_test.dart            ← MilestoneRepository (14 tests)
+│   ├── reference_repository_test.dart            ← ReferenceRepository (14 tests)
+│   ├── consultation_repository_test.dart         ← ConsultationRepository (10 tests)
+│   ├── wellness_repository_test.dart             ← WellnessRepository (10 tests)
+│   └── chat_repository_test.dart                 ← ChatRepository (14 tests)
+├── viewmodels/                                   ← VIEWMODEL UNIT TESTS (40 tests)
+│   ├── timeline_viewmodel_test.dart              ← TimelineViewModel (14 tests)
+│   ├── wellness_viewmodel_test.dart              ← WellnessViewModel (10 tests)
+│   ├── reference_viewmodel_test.dart             ← ReferenceViewModel (10 tests)
+│   └── skripsibot_viewmodel_test.dart            ← SkripsiBotViewModel (9 tests)
+└── widgets/                                      ← WIDGET TESTS (10 tests)
+    └── login_widget_test.dart                    ← LoginScreen (10 tests)
+```
+
+### Fungsi yang Dipilih untuk Unit Testing
+
+Untuk AFL 3, kami memilih beberapa **functionality dengan logic yang kaya** untuk diuji secara isolated:
+
+#### 1. **`MoodLog.score` & `MoodLog.emoji`** — Calculation/Mapping Logic
+Mapping enum `Mood` ke skor numerik (1-5) yang menjadi dasar perhitungan rata-rata mood mingguan. Test memverifikasi setiap dari 5 mood value menghasilkan skor yang benar dan emoji yang tepat.
+
+#### 2. **`MilestoneRepository.add()` & filter operations** — Data Manipulation (CRUD)
+Operasi CREATE/READ/UPDATE/DELETE pada koleksi milestone, plus filtering by chapter dan sorting by due date. Test memverifikasi data integrity setelah operasi mutasi.
+
+#### 3. **`TimelineViewModel.overallProgress`** — Computed Property dengan Kasus Edge
+Menghitung persentase milestone yang sudah selesai. Test mencakup edge case: list kosong (avoid division-by-zero), semua selesai (1.0), semua todo (0.0), dan setengah selesai (0.5).
+
+#### 4. **`ChatRepository.generateReply()`** — Rule-based Business Logic
+Logic mapping keyword user ke balasan SkripsiBot AI. Test memverifikasi tiap rule (BAB 1, gap, metode, halo, default) menghasilkan response yang sesuai dan bersifat case-insensitive.
+
+#### 5. **`ReferenceRepository.search(query, tag)`** — Multi-Parameter Filtering
+Mencari referensi berdasarkan kombinasi query teks + filter tag. Test memverifikasi case-insensitive search, kombinasi AND (query+tag), dan handling string kosong.
+
+#### 6. **Login Form Validation (Widget Test)** — UI State Change
+Memverifikasi `TextFormField` validator menampilkan pesan error yang benar untuk input invalid (email kosong, format salah, password pendek), dan toggle visibility password berfungsi.
+
+### Pola Arrange-Act-Assert (AAA)
+
+Setiap test mengikuti struktur ini secara eksplisit:
+
+```dart
+test('contoh test mengikuti AAA pattern', () {
+  // ARRANGE — siapkan kondisi awal & data input
+  final repo = MilestoneRepository();
+  final milestone = Milestone(id: '1', title: 'Test', ...);
+
+  // ACT — panggil function/method yang diuji
+  repo.add(milestone);
+
+  // ASSERT — verifikasi expected output
+  expect(repo.getAll(), contains(milestone));
+});
+```
+
+### Cara Menjalankan Test
+
+```bash
+# Jalankan semua test
+flutter test
+
+# Jalankan kategori tertentu
+flutter test test/models/
+flutter test test/repositories/
+flutter test test/viewmodels/
+flutter test test/widgets/
+
+# Jalankan file spesifik
+flutter test test/repositories/milestone_repository_test.dart
+
+# Dengan coverage report
+flutter test --coverage
+```
+
+### Hasil Eksekusi
+
+```
+✓ 176 tests passed in 5 seconds
+✗ 0 tests failed
+```
+
+---
+
 ## 🧪 Verifikasi Build
 
 ```bash
 flutter analyze        # → 0 error, 0 warning
-flutter test           # → smoke test passes
+flutter test           # → 176/176 tests passed
 flutter build apk      # → app-debug.apk berhasil dibangun
 ```
 
 ---
 
-## 💭 Refleksi (150 kata)
+## 💭 Refleksi MVVM (AFL 2 — 150 kata)
 
 Menerapkan pola MVVM di Flutter mengajarkan saya bahwa **separation of concerns bukan sekadar teori akademik**, melainkan kebutuhan praktis ketika aplikasi mulai tumbuh kompleks. Pada iterasi sebelumnya, saya sempat menggunakan satu `ChangeNotifier` raksasa yang menampung semua state — hasilnya kode sulit dirawat dan view-nya terlalu tahu banyak tentang implementasi data.
 
@@ -252,11 +349,19 @@ Tantangan terbesar adalah **mendesain batas yang jelas antar lapisan**, terutama
 
 Pelajaran terpenting: **MVVM membuat kode lebih testable**. Setiap ViewModel kini bisa diuji dengan mock Repository, tanpa perlu widget tree. Ini fondasi yang krusial untuk maintenance jangka panjang.
 
+## 💭 Refleksi Unit Testing (AFL 3 — 180 kata)
+
+Mengerjakan AFL 3 — menambahkan 176 unit & widget test ke aplikasi SkripsiKita — sangat membuktikan klaim refleksi AFL 2 di atas: **arsitektur MVVM yang bersih membuat testing terasa natural, bukan beban**. Karena setiap Repository dan ViewModel sudah terpisah dari widget tree, saya bisa membuat instance murni di test environment dengan `new Repository()` — tidak perlu mock framework yang rumit.
+
+Tantangan terbesar adalah **memutuskan apa yang patut dites**. Awalnya saya tergoda menguji semuanya, termasuk getter sederhana — tapi saya sadar itu hanya membuat test suite lambat tanpa menambah confidence. Saya lalu memfokuskan tes pada (1) computed properties dengan edge case (seperti `overallProgress` yang harus avoid division-by-zero), (2) operasi CRUD yang melibatkan sorting/filtering, dan (3) rule-based logic seperti `generateReply()`.
+
+Hal paling tidak terduga adalah **bug yang ditemukan saat menulis test**: rule `metodologi` di ChatRepository ternyata tidak pernah ter-trigger jika input mengandung "penelitian" karena rule "gap" dievaluasi lebih dulu. Saya tidak akan menemukan bug ini tanpa test. Sekarang saya percaya: **test bukan tugas tambahan, tapi alat berpikir desain yang membuat kode lebih kokoh.**
+
 ---
 
 ## 📄 Lisensi & Kredit
 
-Dibangun sebagai assignment **AFL 2 — MVVM Implementation** untuk mata kuliah **Mobile Application Development (IMT01303401)** di IMT UC Online.
+Dibangun sebagai assignment **AFL 2 — MVVM Implementation** dan **AFL 3 — Unit Testing Implementation** untuk mata kuliah **Mobile Application Development (IMT01303401)** di IMT UC Online.
 
 Konsep awal dari **AFL 1 — Mobile App Concept Proposal**.
 
